@@ -1,0 +1,28 @@
+From b69ecf32b72c28f59a068d935d66a7b8df73e645 Mon Sep 17 00:00:00 2001
+From: 
+Date: Mon, 8 Apr 2019 18:12:12 -0500
+Subject: [PATCH 2/3] enable mlock by default on everything but GLIBC
+
+---
+ lib/config/defaults.h | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/lib/config/defaults.h b/lib/config/defaults.h
+index 9e398d7..347206a 100644
+--- a/lib/config/defaults.h
++++ b/lib/config/defaults.h
+@@ -55,7 +55,11 @@
+ #define DEFAULT_LVMLOCKD_LOCK_RETRIES 3
+ #define DEFAULT_LVMETAD_UPDATE_WAIT_TIME 10
+ #define DEFAULT_PRIORITISE_WRITE_LOCKS 1
++#ifdef __GLIBC__
+ #define DEFAULT_USE_MLOCKALL 0
++#else
++#define DEFAULT_USE_MLOCKALL 1
++#endif
+ #define DEFAULT_METADATA_READ_ONLY 0
+ #define DEFAULT_LVDISPLAY_SHOWS_FULL_DEVICE_PATH 0
+ #define DEFAULT_UNKNOWN_DEVICE_NAME "[unknown]"
+-- 
+2.21.0
+

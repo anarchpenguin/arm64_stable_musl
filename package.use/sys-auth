@@ -1,0 +1,2 @@
+sys-auth/elogind debug
+sys-auth/pambase -consolekit

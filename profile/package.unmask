@@ -1,0 +1,12 @@
+# Ian Stakenvicius, 2017-06-14
+# on behalf of mozilla@gentoo.org
+# Mask firefox-54 and above as it requires rust
+# now, and rust reportedly will not build yet.
+>=www-client/firefox-54.0
+
+# lightning/gdata must be updated before we unmask
+~mail-client/thunderbird-68.0
+
+# Lars Wendler <polynomial-c@gentoo.org> (2019-07-21)
+# Requires >=mail-client/thunderbird-68_beta1 which is not in the tree yet
+>=x11-plugins/enigmail-2.1

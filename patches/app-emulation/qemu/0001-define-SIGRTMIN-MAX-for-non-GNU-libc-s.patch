@@ -1,0 +1,30 @@
+From bfcd698310256cd46e21ea98104e92bdcfc4f6b3 Mon Sep 17 00:00:00 2001
+From: 
+Date: Sat, 18 May 2019 17:40:28 -0500
+Subject: [PATCH 1/4] define SIGRTMIN-MAX for non-GNU libc's
+
+---
+ linux-user/signal.c | 7 +++++++
+ 1 file changed, 7 insertions(+)
+
+diff --git a/linux-user/signal.c b/linux-user/signal.c
+index e2c0b371..7a9494c7 100644
+--- a/linux-user/signal.c
++++ b/linux-user/signal.c
+@@ -26,6 +26,13 @@
+ #include "trace.h"
+ #include "signal-common.h"
+ 
++#ifndef __SIGRTMIN
++#define __SIGRTMIN 32
++#endif
++#ifndef __SIGRTMAX
++#define __SIGRTMAX (NSIG-1)
++#endif
++
+ struct target_sigaltstack target_sigaltstack_used = {
+     .ss_sp = 0,
+     .ss_size = 0,
+-- 
+2.21.0
+

@@ -1,0 +1,31 @@
+From 6020983b2c18b70ad00fb83396396f3ac62c129e Mon Sep 17 00:00:00 2001
+From: 
+Date: Fri, 26 Apr 2019 17:28:07 -0500
+Subject: [PATCH] kill ourself instead of using a terrible fallback
+
+so, current flow for getentropy is:
+1) use SYS_getrandom if it exists (true on glibc and musl)
+2) use /dev/urandom
+3) use sysctl (glibc only)
+4) use terrible fallback
+
+---
+ crypto/compat/getentropy_linux.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/crypto/compat/getentropy_linux.c b/crypto/compat/getentropy_linux.c
+index 6b220be..46f3249 100644
+--- a/crypto/compat/getentropy_linux.c
++++ b/crypto/compat/getentropy_linux.c
+@@ -164,7 +164,7 @@ getentropy(void *buf, size_t len)
+ 	 * sysctl ABI, or consider providing a new failsafe API which
+ 	 * works in a chroot or when file descriptors are exhausted.
+ 	 */
+-#undef FAIL_INSTEAD_OF_TRYING_FALLBACK
++#define FAIL_INSTEAD_OF_TRYING_FALLBACK
+ #ifdef FAIL_INSTEAD_OF_TRYING_FALLBACK
+ 	raise(SIGKILL);
+ #endif
+-- 
+2.21.0
+

@@ -1,0 +1,30 @@
+From 4e6e86dfb95756e9cea7a234da9dcdb34e492d38 Mon Sep 17 00:00:00 2001
+From: 
+Date: Sat, 18 May 2019 17:44:47 -0500
+Subject: [PATCH 3/4] define F_SHLCK and F_EXLCK for musl
+
+---
+ linux-user/syscall.c | 7 +++++++
+ 1 file changed, 7 insertions(+)
+
+diff --git a/linux-user/syscall.c b/linux-user/syscall.c
+index c7625858..426767da 100644
+--- a/linux-user/syscall.c
++++ b/linux-user/syscall.c
+@@ -113,6 +113,13 @@
+ #include "qemu.h"
+ #include "fd-trans.h"
+ 
++#ifndef F_SHLCK
++#define F_SHLCK 8
++#endif
++#ifndef F_EXLCK
++#define F_EXLCK 4
++#endif
++
+ #ifndef CLONE_IO
+ #define CLONE_IO                0x80000000      /* Clone io context */
+ #endif
+-- 
+2.21.0
+

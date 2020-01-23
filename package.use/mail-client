@@ -1,0 +1,1 @@
+mail-client/thunderbird custom-cflags custom-optimization lightning system-harfbuzz system-icu system-jpeg system-sqlite -system-libvpx

@@ -1,0 +1,6 @@
+dev-libs/boost nls
+dev-libs/libressl static-libs
+dev-libs/libxml2 python
+dev-libs/nss utils
+dev-libs/xmlsec nss
+dev-libs/libpcre2 pcre16

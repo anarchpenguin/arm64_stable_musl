@@ -1,0 +1,2 @@
+www-client/firefox custom-cflags custom-optimization hwaccel -system-libvpx
+www-client/torbrowser custom-cflags custom-optimization hwaccel system-harfbuzz system-icu system-jpeg system-libevent -system-libvpx system-sqlite

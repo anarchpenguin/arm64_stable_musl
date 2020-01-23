@@ -1,0 +1,8 @@
+~dev-libs/ell-0.27 ~arm64
+~dev-libs/flatbuffers-1.11.0 **
+~dev-libs/libfmt-6.0.0 **
+~dev-libs/libfstrcmp-0.7 **
+~dev-libs/crossguid-0_pre20150817 **
+~dev-libs/rapidjson-1.1.0 **
+~dev-libs/keybinder-0.3.2 **
+~dev-libs/libsigc++-2.10.1 ~arm64

@@ -1,0 +1,38 @@
+From c991e222a892241999d2287c20b274bad3af3307 Mon Sep 17 00:00:00 2001
+From: 
+Date: Sat, 18 May 2019 17:45:34 -0500
+Subject: [PATCH 4/4] fix sigevent and sigval
+
+---
+ linux-user/syscall.c | 13 ++++++++++++-
+ 1 file changed, 12 insertions(+), 1 deletion(-)
+
+diff --git a/linux-user/syscall.c b/linux-user/syscall.c
+index 426767da..26ec8a9b 100644
+--- a/linux-user/syscall.c
++++ b/linux-user/syscall.c
+@@ -6304,9 +6304,20 @@ static inline abi_long host_to_target_timex(abi_long target_addr,
+ }
+ 
+ 
+-static inline abi_long target_to_host_sigevent(struct sigevent *host_sevp,
++struct host_sigevent {
++    union sigval sigev_value;
++    int sigev_signo;
++    int sigev_notify;
++    union {
++       int _pad[64-sizeof(int) * 2 + sizeof(union sigval)];
++       int _tid;
++    } _sigev_un;
++};
++
++static inline abi_long target_to_host_sigevent(struct sigevent *sevp,
+                                                abi_ulong target_addr)
+ {
++    struct host_sigevent *host_sevp = (struct host_sigevent *) sevp;
+     struct target_sigevent *target_sevp;
+ 
+     if (!lock_user_struct(VERIFY_READ, target_sevp, target_addr, 1)) {
+-- 
+2.21.0
+

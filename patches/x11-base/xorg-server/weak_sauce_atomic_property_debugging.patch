@@ -1,0 +1,527 @@
+From 707a4098821136af6724f5c4d755ca43c9b46c94 Mon Sep 17 00:00:00 2001
+From: Adam Jackson <ajax@redhat.com>
+Date: Fri, 5 Oct 2018 14:07:46 -0400
+Subject: [PATCH 1/6] modesetting: Weaksauce atomic property debugging
+
+This would be a good idea to have around for troubleshooting purposes,
+but this particular patch is Not Good.
+
+Signed-off-by: Adam Jackson <ajax@redhat.com>
+---
+ hw/xfree86/drivers/modesetting/drmmode_display.c | 16 +++++++++++++---
+ 1 file changed, 13 insertions(+), 3 deletions(-)
+
+diff --git a/hw/xfree86/drivers/modesetting/drmmode_display.c b/hw/xfree86/drivers/modesetting/drmmode_display.c
+index 9717d9d39..3cb8958a3 100644
+--- a/hw/xfree86/drivers/modesetting/drmmode_display.c
++++ b/hw/xfree86/drivers/modesetting/drmmode_display.c
+@@ -415,6 +415,13 @@ drmmode_ConvertToKMode(ScrnInfoPtr scrn,
+                        drmModeModeInfo * kmode, DisplayModePtr mode);
+ 
+ 
++static int
++drmmodeatomicaddproperty(drmModeAtomicReqPtr req, uint32_t obj, uint32_t prop, uint64_t value)
++{
++    ErrorF("Adding to %p: %x %x %lx\n", req, obj, prop, value);
++    return drmModeAtomicAddProperty(req, obj, prop, value);
++}
++
+ static int
+ plane_add_prop(drmModeAtomicReq *req, drmmode_crtc_private_ptr drmmode_crtc,
+                enum drmmode_plane_property prop, uint64_t val)
+@@ -425,7 +432,8 @@ plane_add_prop(drmModeAtomicReq *req, drmmode_crtc_private_ptr drmmode_crtc,
+     if (!info)
+         return -1;
+ 
+-    ret = drmModeAtomicAddProperty(req, drmmode_crtc->plane_id,
++    ErrorF("Setting %s\n", info->name);
++    ret = drmmodeatomicaddproperty(req, drmmode_crtc->plane_id,
+                                    info->prop_id, val);
+     return (ret <= 0) ? -1 : 0;
+ }
+@@ -467,7 +475,8 @@ crtc_add_prop(drmModeAtomicReq *req, drmmode_crtc_private_ptr drmmode_crtc,
+     if (!info)
+         return -1;
+ 
+-    ret = drmModeAtomicAddProperty(req, drmmode_crtc->mode_crtc->crtc_id,
++    ErrorF("Setting %s\n", info->name);
++    ret = drmmodeatomicaddproperty(req, drmmode_crtc->mode_crtc->crtc_id,
+                                    info->prop_id, val);
+     return (ret <= 0) ? -1 : 0;
+ }
+@@ -482,7 +491,8 @@ connector_add_prop(drmModeAtomicReq *req, drmmode_output_private_ptr drmmode_out
+     if (!info)
+         return -1;
+ 
+-    ret = drmModeAtomicAddProperty(req, drmmode_output->output_id,
++    ErrorF("Setting %s\n", info->name);
++    ret = drmmodeatomicaddproperty(req, drmmode_output->output_id,
+                                    info->prop_id, val);
+     return (ret <= 0) ? -1 : 0;
+ }
+-- 
+2.18.1
+
+
+From 6f2c48e5fe7828de1cf37ace28ff7ad3f32a5bab Mon Sep 17 00:00:00 2001
+From: Adam Jackson <ajax@redhat.com>
+Date: Fri, 5 Oct 2018 14:03:54 -0400
+Subject: [PATCH 2/6] modesetting: Propagate more failure in
+ drmmode_set_mode_major
+
+It's possible that actually setting the mode would fail even though the
+check succeeded. We would throw away the error in this case, which would
+probably make recovery a bit difficult.
+
+Signed-off-by: Adam Jackson <ajax@redhat.com>
+---
+ hw/xfree86/drivers/modesetting/drmmode_display.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/hw/xfree86/drivers/modesetting/drmmode_display.c b/hw/xfree86/drivers/modesetting/drmmode_display.c
+index 3cb8958a3..71757ed23 100644
+--- a/hw/xfree86/drivers/modesetting/drmmode_display.c
++++ b/hw/xfree86/drivers/modesetting/drmmode_display.c
+@@ -1533,8 +1533,8 @@ drmmode_set_mode_major(xf86CrtcPtr crtc, DisplayModePtr mode,
+         }
+ 
+         /* if we only tested the mode previously, really set it now */
+-        if (can_test)
+-            drmmode_crtc_set_mode(crtc, FALSE);
++        if (can_test && drmmode_crtc_set_mode(crtc, FALSE))
++            ret = FALSE;
+         ms->pending_modeset = FALSE;
+     }
+ 
+-- 
+2.18.1
+
+
+From 23b9fe7d4cbf248bf7296668c69adc6ad9e2f247 Mon Sep 17 00:00:00 2001
+From: Adam Jackson <ajax@redhat.com>
+Date: Thu, 11 Oct 2018 14:44:18 -0400
+Subject: [PATCH 3/6] modesetting: Propagate more failure in
+ drmmode_xf86crtc_resize
+
+Signed-off-by: Adam Jackson <ajax@redhat.com>
+---
+ hw/xfree86/drivers/modesetting/drmmode_display.c | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/hw/xfree86/drivers/modesetting/drmmode_display.c b/hw/xfree86/drivers/modesetting/drmmode_display.c
+index 71757ed23..6d6727e0c 100644
+--- a/hw/xfree86/drivers/modesetting/drmmode_display.c
++++ b/hw/xfree86/drivers/modesetting/drmmode_display.c
+@@ -3184,8 +3184,9 @@ drmmode_xf86crtc_resize(ScrnInfoPtr scrn, int width, int height)
+         if (!crtc->enabled)
+             continue;
+ 
+-        drmmode_set_mode_major(crtc, &crtc->mode,
+-                               crtc->rotation, crtc->x, crtc->y);
++        if (!drmmode_set_mode_major(crtc, &crtc->mode, crtc->rotation,
++                                    crtc->x, crtc->y))
++            goto fail;
+     }
+ 
+     if (old_fb_id) {
+-- 
+2.18.1
+
+
+From a039354e76922ef41fe38dc1671ccd66c834f1d4 Mon Sep 17 00:00:00 2001
+From: Adam Jackson <ajax@redhat.com>
+Date: Thu, 11 Oct 2018 14:48:18 -0400
+Subject: [PATCH 4/6] modesetting: Improve drmmode_xf86crtc_resize's diagnostic
+ messages
+
+It was a bit weird to say "stride" without also saying the stride. Move
+the message after we've allocated the new framebuffer so we can actually
+specify it (and rename it "pitch" since that's what the code calls it,
+here).
+
+Also add an error message if resizing fails, and include a breadcrumb in
+that message to point out which step failed.
+
+Signed-off-by: Adam Jackson <ajax@redhat.com>
+---
+ .../drivers/modesetting/drmmode_display.c       | 17 ++++++++++++++---
+ 1 file changed, 14 insertions(+), 3 deletions(-)
+
+diff --git a/hw/xfree86/drivers/modesetting/drmmode_display.c b/hw/xfree86/drivers/modesetting/drmmode_display.c
+index 6d6727e0c..3ac6672f2 100644
+--- a/hw/xfree86/drivers/modesetting/drmmode_display.c
++++ b/hw/xfree86/drivers/modesetting/drmmode_display.c
+@@ -3126,13 +3126,11 @@ drmmode_xf86crtc_resize(ScrnInfoPtr scrn, int width, int height)
+     int kcpp = (drmmode->kbpp + 7) / 8;
+     PixmapPtr ppix = screen->GetScreenPixmap(screen);
+     void *new_pixels = NULL;
++    int step = 0;
+ 
+     if (scrn->virtualX == width && scrn->virtualY == height)
+         return TRUE;
+ 
+-    xf86DrvMsg(scrn->scrnIndex, X_INFO,
+-               "Allocate new frame buffer %dx%d stride\n", width, height);
+-
+     old_width = scrn->virtualX;
+     old_height = scrn->virtualY;
+     old_pitch = drmmode_bo_get_pitch(&drmmode->front_bo);
+@@ -3140,22 +3138,29 @@ drmmode_xf86crtc_resize(ScrnInfoPtr scrn, int width, int height)
+     old_fb_id = drmmode->fb_id;
+     drmmode->fb_id = 0;
+ 
++    step++;
+     if (!drmmode_create_bo(drmmode, &drmmode->front_bo,
+                            width, height, drmmode->kbpp))
+         goto fail;
+ 
+     pitch = drmmode_bo_get_pitch(&drmmode->front_bo);
+ 
++    xf86DrvMsg(scrn->scrnIndex, X_INFO,
++               "Allocated new framebuffer %dx%d pitch %d\n",
++               width, height, pitch);
++
+     scrn->virtualX = width;
+     scrn->virtualY = height;
+     scrn->displayWidth = pitch / kcpp;
+ 
++    step++;
+     if (!drmmode->gbm) {
+         new_pixels = drmmode_map_front_bo(drmmode);
+         if (!new_pixels)
+             goto fail;
+     }
+ 
++    step++;
+     if (drmmode->shadow_enable) {
+         uint32_t size = scrn->displayWidth * scrn->virtualY * cpp;
+         new_pixels = calloc(1, size);
+@@ -3175,9 +3180,11 @@ drmmode_xf86crtc_resize(ScrnInfoPtr scrn, int width, int height)
+     screen->ModifyPixmapHeader(ppix, width, height, -1, -1,
+                                scrn->displayWidth * cpp, new_pixels);
+ 
++    step++;
+     if (!drmmode_glamor_handle_new_screen_pixmap(drmmode))
+         goto fail;
+ 
++    step++;
+     for (i = 0; i < xf86_config->num_crtc; i++) {
+         xf86CrtcPtr crtc = xf86_config->crtc[i];
+ 
+@@ -3197,6 +3204,10 @@ drmmode_xf86crtc_resize(ScrnInfoPtr scrn, int width, int height)
+     return TRUE;
+ 
+  fail:
++    xf86DrvMsg(scrn->scrnIndex, X_ERROR,
++               "Failed to resize framebuffer to %dx%d (step %d)\n",
++               width, height, step);
++
+     drmmode_bo_destroy(drmmode, &drmmode->front_bo);
+     drmmode->front_bo = old_front;
+     scrn->virtualX = old_width;
+-- 
+2.18.1
+
+
+From f19a91cd2220827fbede995ace75344400440b1f Mon Sep 17 00:00:00 2001
+From: Adam Jackson <ajax@redhat.com>
+Date: Fri, 5 Oct 2018 14:00:33 -0400
+Subject: [PATCH 5/6] modesetting: Factor out drmmode_target_output
+
+Signed-off-by: Adam Jackson <ajax@redhat.com>
+---
+ .../drivers/modesetting/drmmode_display.c     | 26 ++++++++++++-------
+ 1 file changed, 16 insertions(+), 10 deletions(-)
+
+diff --git a/hw/xfree86/drivers/modesetting/drmmode_display.c b/hw/xfree86/drivers/modesetting/drmmode_display.c
+index 3ac6672f2..783d30f88 100644
+--- a/hw/xfree86/drivers/modesetting/drmmode_display.c
++++ b/hw/xfree86/drivers/modesetting/drmmode_display.c
+@@ -757,6 +757,21 @@ drmmode_crtc_disable(xf86CrtcPtr crtc)
+     return ret;
+ }
+ 
++static xf86OutputPtr
++drmmode_target_output(ScrnInfoPtr scrn, xf86CrtcPtr crtc)
++{
++    xf86CrtcConfigPtr config = XF86_CRTC_CONFIG_PTR(scrn);
++    int o;
++
++    if (config->output[config->compat_output]->crtc == crtc)
++        return config->output[config->compat_output];
++
++    for (o = 0; o < config->num_output; o++)
++        if (config->output[o]->crtc == crtc)
++            return config->output[o];
++
++    return NULL;
++}
+ static int
+ drmmode_crtc_set_mode(xf86CrtcPtr crtc, Bool test_only)
+ {
+@@ -3454,7 +3469,6 @@ drmmode_set_desired_modes(ScrnInfoPtr pScrn, drmmode_ptr drmmode, Bool set_hw)
+         xf86CrtcPtr crtc = config->crtc[c];
+         drmmode_crtc_private_ptr drmmode_crtc = crtc->driver_private;
+         xf86OutputPtr output = NULL;
+-        int o;
+ 
+         /* Skip disabled CRTCs */
+         if (!crtc->enabled) {
+@@ -3465,15 +3479,7 @@ drmmode_set_desired_modes(ScrnInfoPtr pScrn, drmmode_ptr drmmode, Bool set_hw)
+             continue;
+         }
+ 
+-        if (config->output[config->compat_output]->crtc == crtc)
+-            output = config->output[config->compat_output];
+-        else {
+-            for (o = 0; o < config->num_output; o++)
+-                if (config->output[o]->crtc == crtc) {
+-                    output = config->output[o];
+-                    break;
+-                }
+-        }
++        output = drmmode_target_output(pScrn, crtc);
+         /* paranoia */
+         if (!output)
+             continue;
+-- 
+2.18.1
+
+
+From cb58fc2f859db3359f31201f14905f6de06dade5 Mon Sep 17 00:00:00 2001
+From: Adam Jackson <ajax@redhat.com>
+Date: Fri, 5 Oct 2018 14:09:35 -0400
+Subject: [PATCH 6/6] modesetting: Use atomic instead of per-crtc walks where
+ we can
+
+drmmode_set_desired_modes (reachable from CreateScreenResources,
+EnterVT, etc.) currently works by doing ->set_mode_major on each CRTC.
+This means initialization and VT switch are more flickery than they need
+to be. It also means they're more fragile than they need to be, as
+(especially for EnterVT) we're not trying very hard to ensure the
+intermediate states are valid.
+
+This patch introduces drmmode_set_mode_atomic, which blasts the entire
+RANDR state into the kernel. We change drmmode_set_desired_modes and
+drmmode_xf86crtc_resize to use this instead of walking each CRTC. We
+also change drmmode_crtc_set_mode to use this, so that client RANDR
+requests (operating CRTC-at-a-time, since RANDR doesn't have atomic
+changes yet) use the same code paths.
+
+Signed-off-by: Adam Jackson <ajax@redhat.com>
+---
+ .../drivers/modesetting/drmmode_display.c     | 157 ++++++++++--------
+ 1 file changed, 92 insertions(+), 65 deletions(-)
+
+diff --git a/hw/xfree86/drivers/modesetting/drmmode_display.c b/hw/xfree86/drivers/modesetting/drmmode_display.c
+index 783d30f88..0a593cac9 100644
+--- a/hw/xfree86/drivers/modesetting/drmmode_display.c
++++ b/hw/xfree86/drivers/modesetting/drmmode_display.c
+@@ -772,75 +772,71 @@ drmmode_target_output(ScrnInfoPtr scrn, xf86CrtcPtr crtc)
+ 
+     return NULL;
+ }
++
+ static int
+-drmmode_crtc_set_mode(xf86CrtcPtr crtc, Bool test_only)
++drmmode_set_mode_atomic(ScrnInfoPtr scrn, modesettingPtr ms, Bool test_only)
+ {
+-    modesettingPtr ms = modesettingPTR(crtc->scrn);
+-    xf86CrtcConfigPtr xf86_config = XF86_CRTC_CONFIG_PTR(crtc->scrn);
+-    drmmode_crtc_private_ptr drmmode_crtc = crtc->driver_private;
+-    drmmode_ptr drmmode = drmmode_crtc->drmmode;
+-    drmModeModeInfo kmode;
+-    int output_count = 0;
+-    uint32_t *output_ids = NULL;
+-    uint32_t fb_id;
+-    int x, y;
+-    int i, ret = 0;
++    xf86CrtcConfigPtr xf86_config = XF86_CRTC_CONFIG_PTR(scrn);
++    drmModeAtomicReq *req = drmModeAtomicAlloc();
++    uint32_t flags = DRM_MODE_ATOMIC_ALLOW_MODESET;
++    int i, j, ret = 0;
+ 
+-    if (!drmmode_crtc_get_fb_id(crtc, &fb_id, &x, &y))
++    if (!req)
+         return 1;
+ 
+-    if (ms->atomic_modeset) {
+-        drmModeAtomicReq *req = drmModeAtomicAlloc();
+-        Bool active;
+-        uint32_t flags = DRM_MODE_ATOMIC_ALLOW_MODESET;
+-
+-        if (!req)
+-            return 1;
++    for (i = 0; i < xf86_config->num_crtc; i++) {
++        xf86CrtcPtr crtc = xf86_config->crtc[i];
++        drmmode_crtc_private_ptr drmmode_crtc = crtc->driver_private;
++        Bool active = crtc->enabled;
++        uint32_t fb_id;
++        int x, y;
++        drmModeModeInfo kmode;
+ 
+-        ret |= crtc_add_dpms_props(req, crtc, DPMSModeOn, &active);
+-        ret |= plane_add_props(req, crtc, active ? fb_id : 0, x, y);
++        if (active) {
++            /* XXX this probably doesn't belong here */
++            if (test_only && !crtc->mode.HDisplay)
++                memcpy(&crtc->mode, &crtc->desiredMode, sizeof(crtc->mode));
+ 
+-        /* Orphaned CRTCs need to be disabled right now in atomic mode */
+-        for (i = 0; i < xf86_config->num_crtc; i++) {
+-            xf86CrtcPtr other_crtc = xf86_config->crtc[i];
+-            drmmode_crtc_private_ptr other_drmmode_crtc = other_crtc->driver_private;
+-            int lost_outputs = 0;
+-            int remaining_outputs = 0;
+-            int j;
++            drmmode_ConvertToKMode(crtc->scrn, &kmode, &crtc->mode);
++            ret |= drm_mode_ensure_blob(crtc, kmode);
++        }
+ 
+-            if (other_crtc == crtc)
+-                continue;
++        ret |= !drmmode_crtc_get_fb_id(crtc, &fb_id, &x, &y);
++        ret |= crtc_add_prop(req, drmmode_crtc,
++                             DRMMODE_CRTC_ACTIVE, active);
++        ret |= crtc_add_prop(req, drmmode_crtc,
++                             DRMMODE_CRTC_MODE_ID,
++                             active ? drmmode_crtc->current_mode->blob_id : 0);
++        ret |= plane_add_props(req, crtc, active ? fb_id : 0, x, y);
++    }
+ 
+-            for (j = 0; j < xf86_config->num_output; j++) {
+-                xf86OutputPtr output = xf86_config->output[j];
+-                drmmode_output_private_ptr drmmode_output = output->driver_private;
++    for (i = 0; i < xf86_config->num_output; i++) {
++        xf86OutputPtr output = xf86_config->output[i];
++        drmmode_output_private_ptr drmmode_output = output->driver_private;
++        drmmode_crtc_private_ptr drm_crtc =
++            output->crtc ? output->crtc->driver_private : NULL;
+ 
+-                if (drmmode_output->current_crtc == other_crtc) {
+-                    if (output->crtc == crtc)
+-                        lost_outputs++;
+-                    else
+-                        remaining_outputs++;
+-                }
+-            }
++        if (drmmode_output->output_id == -1)
++            continue;
+ 
+-            if (lost_outputs > 0 && remaining_outputs == 0) {
+-                ret |= crtc_add_prop(req, other_drmmode_crtc,
+-                                     DRMMODE_CRTC_ACTIVE, 0);
+-                ret |= crtc_add_prop(req, other_drmmode_crtc,
+-                                     DRMMODE_CRTC_MODE_ID, 0);
+-            }
+-        }
++        ret |= connector_add_prop(req, drmmode_output,
++                                  DRMMODE_CONNECTOR_CRTC_ID,
++                                  drm_crtc ? drm_crtc->mode_crtc->crtc_id : 0);
++    }
+ 
+-        if (test_only)
+-            flags |= DRM_MODE_ATOMIC_TEST_ONLY;
++    if (test_only)
++        flags |= DRM_MODE_ATOMIC_TEST_ONLY;
+ 
+-        if (ret == 0)
+-            ret = drmModeAtomicCommit(ms->fd, req, flags, NULL);
++    if (ret == 0)
++        ret = drmModeAtomicCommit(ms->fd, req, flags, NULL);
+ 
+-        if (ret == 0 && !test_only) {
+-            for (i = 0; i < xf86_config->num_output; i++) {
+-                xf86OutputPtr output = xf86_config->output[i];
+-                drmmode_output_private_ptr drmmode_output = output->driver_private;
++    if (ret == 0 && !test_only) {
++        for (i = 0; i < xf86_config->num_crtc; i++) {
++            xf86CrtcPtr crtc = xf86_config->crtc[i];
++            for (j = 0; i < xf86_config->num_output; i++) {
++                xf86OutputPtr output = xf86_config->output[j];
++                drmmode_output_private_ptr drmmode_output =
++                    output->driver_private;
+ 
+                 if (output->crtc == crtc)
+                     drmmode_output->current_crtc = crtc;
+@@ -848,11 +844,32 @@ drmmode_crtc_set_mode(xf86CrtcPtr crtc, Bool test_only)
+                     drmmode_output->current_crtc = NULL;
+             }
+         }
+-
+-        drmModeAtomicFree(req);
+-        return ret;
+     }
+ 
++    drmModeAtomicFree(req);
++    return ret;
++}
++
++static int
++drmmode_crtc_set_mode(xf86CrtcPtr crtc, Bool test_only)
++{
++    modesettingPtr ms = modesettingPTR(crtc->scrn);
++    xf86CrtcConfigPtr xf86_config = XF86_CRTC_CONFIG_PTR(crtc->scrn);
++    drmmode_crtc_private_ptr drmmode_crtc = crtc->driver_private;
++    drmmode_ptr drmmode = drmmode_crtc->drmmode;
++    drmModeModeInfo kmode;
++    int output_count = 0;
++    uint32_t *output_ids = NULL;
++    uint32_t fb_id;
++    int x, y;
++    int i, ret = 0;
++
++    if (ms->atomic_modeset)
++        return drmmode_set_mode_atomic(crtc->scrn, ms, test_only);
++
++    if (!drmmode_crtc_get_fb_id(crtc, &fb_id, &x, &y))
++        return 1;
++
+     output_ids = calloc(sizeof(uint32_t), xf86_config->num_output);
+     if (!output_ids)
+         return -1;
+@@ -3200,15 +3217,20 @@ drmmode_xf86crtc_resize(ScrnInfoPtr scrn, int width, int height)
+         goto fail;
+ 
+     step++;
+-    for (i = 0; i < xf86_config->num_crtc; i++) {
+-        xf86CrtcPtr crtc = xf86_config->crtc[i];
++    if (ms->atomic_modeset) {
++        if (drmmode_set_mode_atomic(scrn, ms, FALSE))
++            goto fail;
++    } else {
++        for (i = 0; i < xf86_config->num_crtc; i++) {
++            xf86CrtcPtr crtc = xf86_config->crtc[i];
+ 
+-        if (!crtc->enabled)
+-            continue;
++            if (!crtc->enabled)
++                continue;
+ 
+-        if (!drmmode_set_mode_major(crtc, &crtc->mode, crtc->rotation,
+-                                    crtc->x, crtc->y))
+-            goto fail;
++            if (!drmmode_set_mode_major(crtc, &crtc->mode, crtc->rotation,
++                                        crtc->x, crtc->y))
++                goto fail;
++        }
+     }
+ 
+     if (old_fb_id) {
+@@ -3463,8 +3485,13 @@ Bool
+ drmmode_set_desired_modes(ScrnInfoPtr pScrn, drmmode_ptr drmmode, Bool set_hw)
+ {
+     xf86CrtcConfigPtr config = XF86_CRTC_CONFIG_PTR(pScrn);
++    modesettingPtr ms = modesettingPTR(pScrn);
+     int c;
+ 
++    /* drmmode_set_mode_atomic returns 0 on success, we return TRUE */
++    if (ms->atomic_modeset)
++        return !drmmode_set_mode_atomic(pScrn, ms, /* test_only = */ !set_hw);
++
+     for (c = 0; c < config->num_crtc; c++) {
+         xf86CrtcPtr crtc = config->crtc[c];
+         drmmode_crtc_private_ptr drmmode_crtc = crtc->driver_private;
+-- 
+2.18.1
+

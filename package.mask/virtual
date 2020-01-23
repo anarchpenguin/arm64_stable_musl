@@ -1,0 +1,7 @@
+# Not ready for musl support
+#~virtual/cargo-1.37.0
+#~virtual/rust-1.37.0
+
+# Do not need any virtuals from smaeul's overlay
+virtual/service-manager::smaeul
+virtual/logger::smaeul

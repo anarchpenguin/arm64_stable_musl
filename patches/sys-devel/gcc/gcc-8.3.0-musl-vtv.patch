@@ -1,0 +1,48 @@
+From fca371a963886d14e282bc282c334b559f5d47b5 Mon Sep 17 00:00:00 2001
+From: Jory Pratt <anarchy@gentoo.org>
+Date: Sun, 28 Apr 2019 20:53:07 -0500
+Subject: [PATCH] Musl libc does not have execinfo header
+
+---
+ libvtv/vtv_rts.cc   | 2 +-
+ libvtv/vtv_utils.cc | 4 ++--
+ 2 files changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/libvtv/vtv_rts.cc b/libvtv/vtv_rts.cc
+index 191c182d0..279584fc5 100644
+--- a/libvtv/vtv_rts.cc
++++ b/libvtv/vtv_rts.cc
+@@ -124,7 +124,7 @@
+ #include <windows.h>
+ #include <winternl.h>
+ #include <psapi.h>
+-#else
++#elif defined (__GLIBC__)
+ #include <execinfo.h>
+ #endif
+ 
+diff --git a/libvtv/vtv_utils.cc b/libvtv/vtv_utils.cc
+index 1e41ced44..6b30cedea 100644
+--- a/libvtv/vtv_utils.cc
++++ b/libvtv/vtv_utils.cc
+@@ -34,7 +34,7 @@
+ #include <string.h>
+ #if defined (__CYGWIN__) || defined (__MINGW32__)
+ #include <windows.h>
+-#else
++#elif defined (__GLIBC__)
+ #include <execinfo.h>
+ #endif
+ 
+@@ -178,7 +178,7 @@ __vtv_log_verification_failure (const char *log_msg, bool generate_backtrace)
+ 
+   __vtv_add_to_log (vtv_failures_log_fd, "%s", log_msg);
+ 
+-#if !defined (__CYGWIN__) && !defined (__MINGW32__)
++#if !defined (__CYGWIN__) && !defined (__MINGW32__) && defined(__GLIBC__)
+   if (generate_backtrace)
+     {
+ #define STACK_DEPTH 20
+-- 
+2.21.0
+

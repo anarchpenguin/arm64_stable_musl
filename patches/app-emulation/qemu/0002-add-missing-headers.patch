@@ -1,0 +1,68 @@
+From f4fb73b1476c7a26104f2c2b6a978f64367a848c Mon Sep 17 00:00:00 2001
+From: 
+Date: Sat, 18 May 2019 17:43:45 -0500
+Subject: [PATCH 2/4] add missing headers
+
+---
+ accel/tcg/user-exec.c           | 3 ++-
+ hw/9pfs/9p.c                    | 1 +
+ linux-user/host/ppc64/hostdep.h | 2 ++
+ linux-user/syscall.c            | 1 +
+ 4 files changed, 6 insertions(+), 1 deletion(-)
+
+diff --git a/accel/tcg/user-exec.c b/accel/tcg/user-exec.c
+index 0789984f..5cc7f020 100644
+--- a/accel/tcg/user-exec.c
++++ b/accel/tcg/user-exec.c
+@@ -285,9 +285,10 @@ int cpu_signal_handler(int host_signum, void *pinfo,
+  * From Wine
+  */
+ #ifdef linux
++#include <sys/user.h>
+ /* All Registers access - only for local access */
+ #define REG_sig(reg_name, context)              \
+-    ((context)->uc_mcontext.regs->reg_name)
++    (((struct pt_regs *)(context)->uc_mcontext.regs)->reg_name)
+ /* Gpr Registers access  */
+ #define GPR_sig(reg_num, context)              REG_sig(gpr[reg_num], context)
+ /* Program counter */
+diff --git a/hw/9pfs/9p.c b/hw/9pfs/9p.c
+index 55821343..e0dd2361 100644
+--- a/hw/9pfs/9p.c
++++ b/hw/9pfs/9p.c
+@@ -11,6 +11,7 @@
+  *
+  */
+ 
++#include <linux/limits.h>
+ #include "qemu/osdep.h"
+ #include <glib/gprintf.h>
+ #include "hw/virtio/virtio.h"
+diff --git a/linux-user/host/ppc64/hostdep.h b/linux-user/host/ppc64/hostdep.h
+index 98979ad9..58293b0e 100644
+--- a/linux-user/host/ppc64/hostdep.h
++++ b/linux-user/host/ppc64/hostdep.h
+@@ -17,6 +17,8 @@
+ 
+ #ifndef __ASSEMBLER__
+ 
++#include <asm/ptrace.h>
++
+ /* These are defined by the safe-syscall.inc.S file */
+ extern char safe_syscall_start[];
+ extern char safe_syscall_end[];
+diff --git a/linux-user/syscall.c b/linux-user/syscall.c
+index 96cd4bf8..c7625858 100644
+--- a/linux-user/syscall.c
++++ b/linux-user/syscall.c
+@@ -34,6 +34,7 @@
+ #include <sys/resource.h>
+ #include <sys/swap.h>
+ #include <linux/capability.h>
++#include <linux/sockios.h>
+ #include <sched.h>
+ #include <sys/timex.h>
+ #include <sys/socket.h>
+-- 
+2.21.0
+

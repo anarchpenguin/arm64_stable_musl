@@ -1,0 +1,24 @@
+From 2d05a702c4daa7b45d67897f01ff6a9508ae9990 Mon Sep 17 00:00:00 2001
+From: Jory Pratt <anarchy@gentoo.org>
+Date: Sat, 18 May 2019 18:11:22 -0500
+Subject: [PATCH] add missing paths header
+
+---
+ src/storage/storage_backend_fs.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/src/storage/storage_backend_fs.c b/src/storage/storage_backend_fs.c
+index 97148ac..d904c79 100644
+--- a/src/storage/storage_backend_fs.c
++++ b/src/storage/storage_backend_fs.c
+@@ -24,6 +24,7 @@
+ #include <sys/types.h>
+ #include <sys/stat.h>
+ #include <fcntl.h>
++#include <paths.h>
+ 
+ #include "virerror.h"
+ #include "storage_backend_fs.h"
+-- 
+2.21.0
+

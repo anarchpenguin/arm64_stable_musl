@@ -1,0 +1,2 @@
+dev-lang/php cli curl gd
+dev-lang/rust jemalloc system-llvm

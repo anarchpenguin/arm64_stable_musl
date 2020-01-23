@@ -1,0 +1,27 @@
+From 4670746d253d46a90e92e48e5a7b9516daf93c37 Mon Sep 17 00:00:00 2001
+From: 
+Date: Sat, 18 May 2019 18:03:27 -0500
+Subject: [PATCH] undefine stderr for when it is already defined
+
+---
+ src/qemu/qemu_process.c | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/src/qemu/qemu_process.c b/src/qemu/qemu_process.c
+index dc7317b..6f22a12 100644
+--- a/src/qemu/qemu_process.c
++++ b/src/qemu/qemu_process.c
+@@ -93,6 +93,10 @@
+ 
+ VIR_LOG_INIT("qemu.qemu_process");
+ 
++#ifdef stderr
++#  undef stderr
++#endif
++
+ /**
+  * qemuProcessRemoveDomainStatus
+  *
+-- 
+2.21.0
+

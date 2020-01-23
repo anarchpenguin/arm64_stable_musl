@@ -1,0 +1,45 @@
+--- a/acommon/types.h	2017-09-21 14:21:55.000000000 -0700
++++ b/common/types.h	2019-09-01 14:49:35.467006011 -0700
+@@ -33,9 +33,10 @@
+ #define XFSDUMP_DIRPATH	inv_basepath()
+ 
+ /*
+- * Should be, but isn't, defined in uuid/uuid.h
++ * UUID_STR_LEN is defined by util-linux's built-in libuuid.
++ * For Gentoo, there is no need to define/redefine it.
++ * #define UUID_STR_LEN	36
+  */
+-#define UUID_STR_LEN	36
+ 
+ /* fundamental page size - probably should not be hardwired, but
+  * for now we will
+@@ -149,7 +150,7 @@ typedef struct stat64 stat64_t;
+ typedef struct getbmapx getbmapx_t;
+ typedef struct fsdmidata fsdmidata_t;
+ 
+-/* flg definitions for preemptchk 
++/* flg definitions for preemptchk
+  */
+ #define PREEMPT_FULL		0
+ #define PREEMPT_PROGRESSONLY	1
+--- a/common/fs.c	2015-11-10 11:40:23.000000000 -0800
++++ b/common/fs.c	2019-09-01 14:53:21.807454826 -0700
+@@ -204,7 +204,7 @@ fs_mounted( char *typs, char *chrs, char
+ int
+ fs_getid( char *mnts, uuid_t *idb )
+ {
+-	xfs_fsop_geom_v1_t geo;
++	struct xfs_fsop_geom_v1 geo; /* https://www.mail-archive.com/openembedded-devel@lists.openembedded.org/msg65431.html */
+ 	int fd;
+ 
+ 	fd = open( mnts, O_RDONLY );
+--- a/common/drive.c	2015-11-10 11:40:23.000000000 -0800
++++ b/common/drive.c	2019-09-01 15:05:06.019058515 -0700
+@@ -17,6 +17,7 @@
+  */
+ 
+ #include <stdio.h>
++#include <stdlib.h> /* warning: implicit declaration of function ‘calloc’ [-Wimplicit-function-declaration] */
+ #include <unistd.h>
+ #include <sys/stat.h>
+ #include <time.h>
