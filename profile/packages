@@ -1,2 +1,5 @@
+*acct-group/gpio
+*acct-group/i2c
+*acct-group/spi
 *dev-vcs/git
 *net-wireless/wireless-regdb
