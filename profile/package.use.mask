@@ -1,2 +1,1 @@
 net-misc/networkmanager -iwd
-media-tv/kodi -raspberry-pi
