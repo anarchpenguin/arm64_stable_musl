@@ -1,8 +1,8 @@
 ~xfce-base/garcon-0.6.4-r2 ~arm64
-~xfce-base/xfce4-panel-4.14.1 ~arm64
-~xfce-base/thunar-1.8.9 ~arm64
+~xfce-base/xfce4-panel-4.14.3 ~arm64
+~xfce-base/thunar-1.8.12 ~arm64
 ~xfce-base/xfce4-appfinder-4.14.0 ~arm64
-~xfce-base/xfce4-session-4.14.0 ~arm64
-~xfce-base/xfce4-settings-4.14.1 ~arm64
-~xfce-base/xfdesktop-4.14.1 ~arm64
+~xfce-base/xfce4-session-4.14.1 ~arm64
+~xfce-base/xfce4-settings-4.14.2 ~arm64
+~xfce-base/xfdesktop-4.14.2 ~arm64
 ~xfce-base/xfwm4-4.14.0-r1 ~arm64
