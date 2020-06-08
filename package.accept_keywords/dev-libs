@@ -1,3 +1,4 @@
+~dev-libs/atk-2.34.1 ~arm64
 ~dev-libs/ell-0.31 ~arm64
 ~dev-libs/flatbuffers-1.12.0 **
 ~dev-libs/libfmt-6.0.0 **
